@@ -1,0 +1,159 @@
+// ==============================================================================
+// StellarInvoice Prisma Database Schema
+// ==============================================================================
+// Designed for PostgreSQL (compatible with local Docker Compose and Supabase)
+// Strict non-custodial accounting: Decimals for monetary values, unique constraints
+// on (txHash, operationIndex) to guarantee idempotency and avoid double-counting.
+// ==============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum InvoiceStatus {
+  PENDING
+  PARTIALLY_PAID
+  PAID
+  OVERPAID
+  EXPIRED
+  CANCELLED
+}
+
+enum PaymentMatchResult {
+  MATCHED
+  UNDERPAID
+  OVERPAID
+  WRONG_ASSET
+  NO_MEMO
+  UNKNOWN
+}
+
+enum WebhookStatus {
+  PENDING
+  DELIVERED
+  FAILED
+}
+
+model Merchant {
+  id            String         @id @default(uuid())
+  authUserId    String         @unique @map("auth_user_id") // Maps to Supabase auth.users or API key identity
+  name          String
+  email         String         @unique
+  businessName  String         @map("business_name")
+  walletAddress String         @map("wallet_address") // Merchant's receiving Stellar public key (G...)
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
+
+  customers     Customer[]
+  invoices      Invoice[]
+  webhooks      WebhookEvent[]
+
+  @@map("merchants")
+}
+
+model Customer {
+  id         String    @id @default(uuid())
+  merchantId String    @map("merchant_id")
+  name       String
+  email      String
+  phone      String?
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+
+  merchant   Merchant  @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  invoices   Invoice[]
+
+  @@map("customers")
+}
+
+model Invoice {
+  id          String        @id @default(uuid())
+  merchantId  String        @map("merchant_id")
+  customerId  String?       @map("customer_id")
+  reference   String        @unique // Short reference code (e.g. INV-8F3K2A, max 28 bytes for Stellar text memo)
+  amount      Decimal       @db.Decimal(20, 7) // Stellar supports up to 7 decimal places
+  amountPaid  Decimal       @default(0) @map("amount_paid") @db.Decimal(20, 7)
+  assetCode   String        @map("asset_code") // e.g. "XLM", "USDC"
+  assetIssuer String?       @map("asset_issuer") // null for native XLM; G... address for tokens
+  description String
+  dueDate     DateTime      @map("due_date")
+  status      InvoiceStatus @default(PENDING)
+  paymentLink String?       @map("payment_link") // SEP-7 payment URI (web+stellar:pay?...)
+  createdAt   DateTime      @default(now()) @map("created_at")
+  paidDate    DateTime?     @map("paid_date")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+
+  merchant    Merchant      @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  customer    Customer?     @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  items       InvoiceItem[]
+  payments    Payment[]
+
+  @@index([merchantId, status])
+  @@index([reference])
+  @@map("invoices")
+}
+
+model InvoiceItem {
+  id          String   @id @default(uuid())
+  invoiceId   String   @map("invoice_id")
+  description String
+  quantity    Int      @default(1)
+  unitPrice   Decimal  @map("unit_price") @db.Decimal(20, 7)
+
+  invoice     Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@map("invoice_items")
+}
+
+model Payment {
+  id             String              @id @default(uuid())
+  invoiceId      String?             @map("invoice_id") // Nullable if payment has no memo or unrecognized memo
+  txHash         String              @map("tx_hash") // Stellar transaction 64-char hex hash
+  operationIndex Int                 @default(0) @map("operation_index") // Operation index within the transaction
+  senderAddress  String              @map("sender_address") // G... public address of payer
+  amount         Decimal             @db.Decimal(20, 7)
+  assetCode      String              @map("asset_code")
+  assetIssuer    String?             @map("asset_issuer")
+  memoReceived   String?             @map("memo_received") // Memo extracted from the transaction
+  matchResult    PaymentMatchResult  @map("match_result")
+  ledger         BigInt              @map("ledger")
+  timestamp      DateTime            @map("timestamp")
+  createdAt      DateTime            @default(now()) @map("created_at")
+
+  invoice        Invoice?            @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+
+  // Enforces absolute idempotency: an operation in a transaction can never be processed twice
+  @@unique([txHash, operationIndex])
+  @@index([invoiceId])
+  @@map("payments")
+}
+
+model ListenerState {
+  streamName String   @id @map("stream_name") // e.g. "horizon_payments_stream"
+  lastCursor String   @map("last_cursor") // Stellar paging token / cursor string
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@map("listener_states")
+}
+
+model WebhookEvent {
+  id             String        @id @default(uuid())
+  merchantId     String        @map("merchant_id")
+  eventType      String        @map("event_type") // e.g. "invoice.paid", "payment.underpaid"
+  payload        Json          @map("payload")
+  deliveryStatus WebhookStatus @default(PENDING) @map("delivery_status")
+  attempts       Int           @default(0)
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
+
+  merchant       Merchant      @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+
+  @@map("webhook_events")
+}
+
