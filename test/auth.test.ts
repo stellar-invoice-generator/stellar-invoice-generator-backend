@@ -1,13 +1,12 @@
 /**
- * @file apps/api/test/auth.test.ts
+ * @file test/auth.test.ts
  * @summary Unit and integration tests for merchant tenant isolation and auth drivers.
- * 
- * Test Scenarios:
- *   1. API-key verification: Authenticates valid key, rejects invalid key.
- *   2. Tenant isolation: Merchant A cannot access, view, or modify invoices/payments of Merchant B.
- *   3. Missing auth headers: Returns 401 Unauthorized.
- * 
- * Interacting Modules:
- *   - Tests modules/auth/auth.service.ts and middleware/auth.middleware.ts.
  */
 
+import { describe, it } from 'vitest';
+
+describe('Stage 4: Auth & Tenant Isolation (Pending Implementation in Stage 4)', () => {
+  it.todo('api-key verification: authenticates valid key, rejects invalid key');
+  it.todo('tenant isolation: merchant A cannot access, view, or modify invoices of merchant B');
+  it.todo('missing auth headers: returns 401 Unauthorized');
+});

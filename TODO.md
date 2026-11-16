@@ -12,8 +12,8 @@ For the complete granular breakdown, see [100_step_implementation_plan.md](file:
 - [x] **Step 02**: Add database URLs (`DATABASE_URL`, `DIRECT_URL`) and auth variables to `src/config/env.ts`.
 - [x] **Step 03**: Add Stellar network variables (`STELLAR_NETWORK`, `HORIZON_URL`, `PLATFORM_WALLET_PUBLIC_ADDRESS`) to `src/config/env.ts`.
 - [x] **Step 04**: Implement `loadEnvConfig()` function in `src/config/env.ts` with fail-fast validation.
-- [ ] **Step 05**: Implement structured pino logger in `src/utils/logger.util.ts`.
-- [ ] **Step 06**: Implement sensitive field redaction in `src/utils/logger.util.ts` (masking Authorization tokens and API keys).
+- [x] **Step 05**: Implement structured pino logger in `src/utils/logger.util.ts`.
+- [x] **Step 06**: Implement sensitive field redaction in `src/utils/logger.util.ts` (masking Authorization tokens and API keys).
 - [ ] **Step 07**: Implement Decimal arithmetic wrapper in `src/utils/amount.util.ts` for safe string-to-Decimal parsing (`toDecimal`).
 - [ ] **Step 08**: Implement 7-decimal place string formatter `formatStellarAmount(val)` in `src/utils/amount.util.ts`.
 - [ ] **Step 09**: Implement Decimal comparison helpers (`isEqualAmount`, `isLessThan`, `isGreaterThan`) in `src/utils/amount.util.ts`.
