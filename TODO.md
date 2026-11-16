@@ -10,8 +10,8 @@ For the complete granular breakdown, see [100_step_implementation_plan.md](file:
 ### Stage 1: Environment, Configuration & Utilities (Steps 1–12)
 - [x] **Step 01**: Define `envSchema` in `src/config/env.ts` for server settings (`PORT`, `HOST`, `NODE_ENV`).
 - [x] **Step 02**: Add database URLs (`DATABASE_URL`, `DIRECT_URL`) and auth variables to `src/config/env.ts`.
-- [ ] **Step 03**: Add Stellar network variables (`STELLAR_NETWORK`, `HORIZON_URL`, `PLATFORM_WALLET_PUBLIC_ADDRESS`) to `src/config/env.ts`.
-- [ ] **Step 04**: Implement `loadEnvConfig()` function in `src/config/env.ts` with fail-fast validation.
+- [x] **Step 03**: Add Stellar network variables (`STELLAR_NETWORK`, `HORIZON_URL`, `PLATFORM_WALLET_PUBLIC_ADDRESS`) to `src/config/env.ts`.
+- [x] **Step 04**: Implement `loadEnvConfig()` function in `src/config/env.ts` with fail-fast validation.
 - [ ] **Step 05**: Implement structured pino logger in `src/utils/logger.util.ts`.
 - [ ] **Step 06**: Implement sensitive field redaction in `src/utils/logger.util.ts` (masking Authorization tokens and API keys).
 - [ ] **Step 07**: Implement Decimal arithmetic wrapper in `src/utils/amount.util.ts` for safe string-to-Decimal parsing (`toDecimal`).

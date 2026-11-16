@@ -1,5 +1,14 @@
 import { describe, it, expect } from 'vitest';
-import { serverEnvSchema, databaseEnvSchema, authEnvSchema } from '../src/config/env.js';
+import {
+  serverEnvSchema,
+  databaseEnvSchema,
+  authEnvSchema,
+  stellarEnvSchema,
+  loadEnvConfig,
+  formatZodErrors,
+  getEnvConfig,
+  envConfig,
+} from '../src/config/env.js';
 
 describe('Step 01: Server Environment Schema Validation', () => {
   it('should parse valid server environment settings with defaults', () => {
@@ -69,5 +78,94 @@ describe('Step 02: Database & Auth Environment Schema Validation', () => {
     });
     expect(result.AUTH_MODE).toBe('supabase');
     expect(result.SUPABASE_URL).toBe('https://testproject.supabase.co');
+  });
+});
+
+describe('Step 03: Stellar Network Environment Schema Validation', () => {
+  const validStellarAddress = 'GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5';
+
+  it('should parse valid Stellar network settings with defaults', () => {
+    const result = stellarEnvSchema.parse({
+      PLATFORM_WALLET_PUBLIC_ADDRESS: validStellarAddress,
+    });
+    expect(result.STELLAR_NETWORK).toBe('TESTNET');
+    expect(result.HORIZON_URL).toBe('https://horizon-testnet.stellar.org');
+    expect(result.CHAIN_READER_DRIVER).toBe('horizon');
+    expect(result.RECONCILER_INTERVAL_MS).toBe(180000);
+    expect(result.EXPIRY_JOB_INTERVAL_MS).toBe(60000);
+    expect(result.LISTENER_RECONNECT_DELAY_MS).toBe(5000);
+    expect(result.PLATFORM_WALLET_PUBLIC_ADDRESS).toBe(validStellarAddress);
+  });
+
+  it('should require PLATFORM_WALLET_PUBLIC_ADDRESS', () => {
+    expect(() =>
+      stellarEnvSchema.parse({}),
+    ).toThrow(/PLATFORM_WALLET_PUBLIC_ADDRESS is required/);
+  });
+
+  it('should reject invalid Stellar public addresses (e.g. secret keys or bad lengths)', () => {
+    // Secret seed starting with S
+    expect(() =>
+      stellarEnvSchema.parse({
+        PLATFORM_WALLET_PUBLIC_ADDRESS: 'SBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5',
+      }),
+    ).toThrow(/must be a valid 56-character Stellar public key/);
+
+    // Too short
+    expect(() =>
+      stellarEnvSchema.parse({
+        PLATFORM_WALLET_PUBLIC_ADDRESS: 'GABC123',
+      }),
+    ).toThrow(/must be a valid 56-character Stellar public key/);
+  });
+
+  it('should coerce interval strings to positive integers', () => {
+    const result = stellarEnvSchema.parse({
+      PLATFORM_WALLET_PUBLIC_ADDRESS: validStellarAddress,
+      RECONCILER_INTERVAL_MS: '300000',
+      EXPIRY_JOB_INTERVAL_MS: '120000',
+      LISTENER_RECONNECT_DELAY_MS: '10000',
+    });
+    expect(result.RECONCILER_INTERVAL_MS).toBe(300000);
+    expect(result.EXPIRY_JOB_INTERVAL_MS).toBe(120000);
+    expect(result.LISTENER_RECONNECT_DELAY_MS).toBe(10000);
+  });
+});
+
+describe('Step 04: Full Application loadEnvConfig & Startup Error Handling', () => {
+  const validStellarAddress = 'GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5';
+
+  const validFullEnv = {
+    DATABASE_URL: 'postgresql://postgres:postgres@localhost:5432/stellar_invoice',
+    PLATFORM_WALLET_PUBLIC_ADDRESS: validStellarAddress,
+  };
+
+  it('should successfully load valid complete environment config', () => {
+    const config = loadEnvConfig(validFullEnv);
+    expect(config.DATABASE_URL).toBe(validFullEnv.DATABASE_URL);
+    expect(config.PLATFORM_WALLET_PUBLIC_ADDRESS).toBe(validStellarAddress);
+    expect(config.API_PORT).toBe(4000);
+    expect(config.STELLAR_NETWORK).toBe('TESTNET');
+  });
+
+  it('should throw formatted error listing all missing required fields', () => {
+    expect(() => loadEnvConfig({})).toThrowError(/\[StellarInvoice Config Error\]/);
+    expect(() => loadEnvConfig({})).toThrowError(/DATABASE_URL/);
+    expect(() => loadEnvConfig({})).toThrowError(/PLATFORM_WALLET_PUBLIC_ADDRESS/);
+  });
+
+  it('should format zod errors cleanly using formatZodErrors helper', () => {
+    const parsed = databaseEnvSchema.safeParse({});
+    if (!parsed.success) {
+      const formatted = formatZodErrors(parsed.error);
+      expect(formatted).toContain('- [DATABASE_URL]: DATABASE_URL is required');
+    }
+  });
+
+  it('should allow accessing properties via envConfig proxy', () => {
+    // Reset cache with valid test env
+    getEnvConfig(validFullEnv, true);
+    expect(envConfig.DATABASE_URL).toBe(validFullEnv.DATABASE_URL);
+    expect(envConfig.PLATFORM_WALLET_PUBLIC_ADDRESS).toBe(validStellarAddress);
   });
 });
