@@ -89,3 +89,4 @@ describe('Step 06: Sensitive Field Redaction & String Masking', () => {
     expect(maskSecret(undefined)).toBe('');
   });
 });
+

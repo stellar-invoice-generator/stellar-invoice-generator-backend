@@ -14,8 +14,8 @@ For the complete granular breakdown, see [100_step_implementation_plan.md](file:
 - [x] **Step 04**: Implement `loadEnvConfig()` function in `src/config/env.ts` with fail-fast validation.
 - [x] **Step 05**: Implement structured pino logger in `src/utils/logger.util.ts`.
 - [x] **Step 06**: Implement sensitive field redaction in `src/utils/logger.util.ts` (masking Authorization tokens and API keys).
-- [ ] **Step 07**: Implement Decimal arithmetic wrapper in `src/utils/amount.util.ts` for safe string-to-Decimal parsing (`toDecimal`).
-- [ ] **Step 08**: Implement 7-decimal place string formatter `formatStellarAmount(val)` in `src/utils/amount.util.ts`.
+- [x] **Step 07**: Implement Decimal arithmetic wrapper in `src/utils/amount.util.ts` for safe string-to-Decimal parsing (`toDecimal`).
+- [x] **Step 08**: Implement 7-decimal place string formatter `formatStellarAmount(val)` in `src/utils/amount.util.ts`.
 - [ ] **Step 09**: Implement Decimal comparison helpers (`isEqualAmount`, `isLessThan`, `isGreaterThan`) in `src/utils/amount.util.ts`.
 - [ ] **Step 10**: Write unit tests in `test/amount.test.ts` verifying zero floating-point rounding drift.
 - [ ] **Step 11**: Implement 10-character collision-resistant random reference generator (`INV-XXXXXX`) in `src/utils/reference.util.ts`.
