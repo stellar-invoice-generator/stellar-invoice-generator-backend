@@ -7,12 +7,14 @@
  *     IEEE 754 floating-point precision drift.
  *   - [Step 08] Formats monetary amounts strictly to Stellar's 7-decimal place standard
  *     (1 stroop = 0.0000001 units).
+ *   - [Step 09] Provides robust comparison, addition, subtraction, and balance calculation
+ *     helpers used by the payment matcher and invoice billing logic.
  * 
  * Inputs:
  *   - String, number, BigInt, or Decimal amount representations.
  * 
  * Outputs:
- *   - Precision-safe Decimal instances and standardized 7-decimal string representations.
+ *   - Precision-safe Decimal instances, booleans, and standardized 7-decimal string representations.
  * 
  * Interacting Modules:
  *   - Consumed by stellar/matcher/matcher.service.ts, modules/invoices/invoices.service.ts,
@@ -25,6 +27,11 @@ import { Decimal } from 'decimal.js';
 Decimal.set({ precision: 28, rounding: Decimal.ROUND_HALF_UP });
 
 export { Decimal };
+
+/**
+ * Union of supported input types convertible to a Decimal amount.
+ */
+export type AmountInput = string | number | Decimal | bigint;
 
 /**
  * Standard number of decimal places supported natively by the Stellar network.
@@ -44,7 +51,7 @@ export const STROOPS_PER_UNIT = new Decimal(10).pow(STELLAR_DECIMAL_PLACES);
  * 
  * @throws {Error} if input is null, undefined, empty, NaN, or an unparseable string.
  */
-export function toDecimal(value: string | number | Decimal | bigint): Decimal {
+export function toDecimal(value: AmountInput): Decimal {
   if (value === null || value === undefined || value === '') {
     throw new Error('Cannot convert empty or null value to Decimal');
   }
@@ -84,7 +91,7 @@ export function toDecimal(value: string | number | Decimal | bigint): Decimal {
  * @param options - Optional formatting configuration (e.g. trimTrailingZeros)
  */
 export function formatStellarAmount(
-  amount: string | number | Decimal | bigint,
+  amount: AmountInput,
   options?: { trimTrailingZeros?: boolean },
 ): string {
   const dec = toDecimal(amount);
@@ -127,7 +134,7 @@ export function isValidStellarAmount(val: string): boolean {
 /**
  * Converts a Stellar asset amount to stroops (integer representation: 1 unit = 10,000,000 stroops).
  */
-export function toStroops(amount: string | number | Decimal | bigint): bigint {
+export function toStroops(amount: AmountInput): bigint {
   const dec = toDecimal(amount);
   const stroopsDec = dec.times(STROOPS_PER_UNIT).truncated();
   return BigInt(stroopsDec.toFixed(0));
@@ -139,4 +146,86 @@ export function toStroops(amount: string | number | Decimal | bigint): bigint {
 export function fromStroops(stroops: bigint | string | number): Decimal {
   const dec = toDecimal(stroops);
   return dec.dividedBy(STROOPS_PER_UNIT);
+}
+
+/**
+ * Step 09: Decimal Comparison & Arithmetic Helpers
+ * High-precision mathematical functions for exact settlement evaluation.
+ */
+
+/**
+ * Returns true if amount a equals amount b in value, regardless of trailing zeros.
+ * e.g. isEqualAmount('10.5', '10.5000000') === true
+ */
+export function isEqualAmount(a: AmountInput, b: AmountInput): boolean {
+  return toDecimal(a).equals(toDecimal(b));
+}
+
+/**
+ * Returns true if amount a is strictly less than amount b.
+ */
+export function isLessThan(a: AmountInput, b: AmountInput): boolean {
+  return toDecimal(a).lessThan(toDecimal(b));
+}
+
+/**
+ * Returns true if amount a is strictly greater than amount b.
+ */
+export function isGreaterThan(a: AmountInput, b: AmountInput): boolean {
+  return toDecimal(a).greaterThan(toDecimal(b));
+}
+
+/**
+ * Returns true if amount a is less than or equal to amount b.
+ */
+export function isLessThanOrEqual(a: AmountInput, b: AmountInput): boolean {
+  return toDecimal(a).lessThanOrEqualTo(toDecimal(b));
+}
+
+/**
+ * Returns true if amount a is greater than or equal to amount b.
+ */
+export function isGreaterThanOrEqual(a: AmountInput, b: AmountInput): boolean {
+  return toDecimal(a).greaterThanOrEqualTo(toDecimal(b));
+}
+
+/**
+ * Returns true if amount is exactly zero.
+ */
+export function isZeroAmount(amount: AmountInput): boolean {
+  return toDecimal(amount).isZero();
+}
+
+/**
+ * Safely adds two amounts without floating-point precision loss.
+ */
+export function addAmounts(a: AmountInput, b: AmountInput): Decimal {
+  return toDecimal(a).plus(toDecimal(b));
+}
+
+/**
+ * Safely subtracts amount b from amount a without floating-point precision loss.
+ */
+export function subtractAmounts(a: AmountInput, b: AmountInput): Decimal {
+  return toDecimal(a).minus(toDecimal(b));
+}
+
+/**
+ * Calculates remaining balance on an invoice: (totalAmount - amountPaid).
+ * Clamps negative balance to 0 if clampZero is true (default: false).
+ */
+export function calculateRemainingBalance(
+  totalAmount: AmountInput,
+  amountPaid: AmountInput,
+  options?: { clampZero?: boolean },
+): Decimal {
+  const total = toDecimal(totalAmount);
+  const paid = toDecimal(amountPaid);
+  const diff = total.minus(paid);
+
+  if (options?.clampZero && diff.isNegative()) {
+    return new Decimal(0);
+  }
+
+  return diff;
 }
