@@ -4,31 +4,46 @@
  * 
  * Purpose:
  *   Defines core domain models, payment matching results, invoice statuses, and Stellar asset definitions.
+ *   [Step 14] Aligns 1:1 with Prisma schema enums (InvoiceStatus, PaymentMatchResult, WebhookStatus).
  * 
  * Inputs / Outputs:
  *   - Inputs: Domain data structures.
- *   - Outputs: Exported TypeScript types (InvoiceStatus, PaymentMatchResult, StellarAssetConfig, etc.).
+ *   - Outputs: Exported TypeScript types and const arrays.
  * 
  * Interacting Modules:
  *   - Imported by controllers, services, matcher, and chainReader.
  *   - Used in src/schemas for Zod schema type inference.
  */
 
-export type InvoiceStatus =
-  | 'PENDING'
-  | 'PARTIALLY_PAID'
-  | 'PAID'
-  | 'OVERPAID'
-  | 'EXPIRED'
-  | 'CANCELLED';
+export const INVOICE_STATUSES = [
+  'PENDING',
+  'PARTIALLY_PAID',
+  'PAID',
+  'OVERPAID',
+  'EXPIRED',
+  'CANCELLED',
+] as const;
 
-export type PaymentMatchResult =
-  | 'MATCHED'
-  | 'UNDERPAID'
-  | 'OVERPAID'
-  | 'WRONG_ASSET'
-  | 'NO_MEMO'
-  | 'UNKNOWN';
+export type InvoiceStatus = (typeof INVOICE_STATUSES)[number];
+
+export const PAYMENT_MATCH_RESULTS = [
+  'MATCHED',
+  'UNDERPAID',
+  'OVERPAID',
+  'WRONG_ASSET',
+  'NO_MEMO',
+  'UNKNOWN',
+] as const;
+
+export type PaymentMatchResult = (typeof PAYMENT_MATCH_RESULTS)[number];
+
+export const WEBHOOK_STATUSES = [
+  'PENDING',
+  'DELIVERED',
+  'FAILED',
+] as const;
+
+export type WebhookStatus = (typeof WEBHOOK_STATUSES)[number];
 
 export interface StellarAssetConfig {
   code: string;
@@ -50,4 +65,3 @@ export interface CreateInvoiceDTO {
   dueDate: string;
   items?: InvoiceItemDTO[];
 }
-

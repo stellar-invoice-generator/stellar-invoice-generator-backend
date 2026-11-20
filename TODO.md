@@ -22,8 +22,8 @@ For the complete granular breakdown, see [100_step_implementation_plan.md](file:
 - [x] **Step 12**: Write unit tests in `test/reference.test.ts` verifying UTF-8 byte length is strictly $\le 28$ bytes.
 
 ### Stage 2: Database, Prisma & Migrations (Steps 13–22)
-- [ ] **Step 13**: Set up local PostgreSQL container via `docker-compose.yml` and test database connectivity.
-- [ ] **Step 14**: Define `InvoiceStatus`, `PaymentMatchResult`, and `WebhookStatus` enums in `prisma/schema.prisma`.
+- [x] **Step 13**: Set up local PostgreSQL container via `docker-compose.yml` and test database connectivity.
+- [x] **Step 14**: Define `InvoiceStatus`, `PaymentMatchResult`, and `WebhookStatus` enums in `prisma/schema.prisma`.
 - [ ] **Step 15**: Define `Merchant` model in `prisma/schema.prisma` with `authUserId` unique constraint.
 - [ ] **Step 16**: Define `Customer` model in `prisma/schema.prisma` with cascade relation to `Merchant`.
 - [ ] **Step 17**: Define `Invoice` and `InvoiceItem` models with `Decimal(20, 7)` precision and index on `(merchantId, status)`.
