@@ -18,8 +18,8 @@ For the complete granular breakdown, see [100_step_implementation_plan.md](file:
 - [x] **Step 08**: Implement 7-decimal place string formatter `formatStellarAmount(val)` in `src/utils/amount.util.ts`.
 - [x] **Step 09**: Implement Decimal comparison helpers (`isEqualAmount`, `isLessThan`, `isGreaterThan`) in `src/utils/amount.util.ts`.
 - [x] **Step 10**: Write unit tests in `test/amount.test.ts` verifying zero floating-point rounding drift.
-- [ ] **Step 11**: Implement 10-character collision-resistant random reference generator (`INV-XXXXXX`) in `src/utils/reference.util.ts`.
-- [ ] **Step 12**: Write unit tests in `test/reference.test.ts` verifying UTF-8 byte length is strictly $\le 28$ bytes.
+- [x] **Step 11**: Implement 10-character collision-resistant random reference generator (`INV-XXXXXX`) in `src/utils/reference.util.ts`.
+- [x] **Step 12**: Write unit tests in `test/reference.test.ts` verifying UTF-8 byte length is strictly $\le 28$ bytes.
 
 ### Stage 2: Database, Prisma & Migrations (Steps 13–22)
 - [ ] **Step 13**: Set up local PostgreSQL container via `docker-compose.yml` and test database connectivity.
