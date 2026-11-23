@@ -65,3 +65,30 @@ export interface CreateInvoiceDTO {
   dueDate: string;
   items?: InvoiceItemDTO[];
 }
+
+export interface MerchantDTO {
+  id: string;
+  authUserId: string;
+  name: string;
+  email: string;
+  businessName: string;
+  walletAddress: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface CustomerDTO {
+  id: string;
+  merchantId: string;
+  name: string;
+  email: string;
+  phone?: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface CreateCustomerDTO {
+  name: string;
+  email: string;
+  phone?: string;
+}

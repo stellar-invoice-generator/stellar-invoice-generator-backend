@@ -69,6 +69,7 @@ model Customer {
   merchant   Merchant  @relation(fields: [merchantId], references: [id], onDelete: Cascade)
   invoices   Invoice[]
 
+  @@index([merchantId])
   @@map("customers")
 }
 

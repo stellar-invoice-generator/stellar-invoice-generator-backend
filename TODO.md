@@ -24,8 +24,8 @@ For the complete granular breakdown, see [100_step_implementation_plan.md](file:
 ### Stage 2: Database, Prisma & Migrations (Steps 13–22)
 - [x] **Step 13**: Set up local PostgreSQL container via `docker-compose.yml` and test database connectivity.
 - [x] **Step 14**: Define `InvoiceStatus`, `PaymentMatchResult`, and `WebhookStatus` enums in `prisma/schema.prisma`.
-- [ ] **Step 15**: Define `Merchant` model in `prisma/schema.prisma` with `authUserId` unique constraint.
-- [ ] **Step 16**: Define `Customer` model in `prisma/schema.prisma` with cascade relation to `Merchant`.
+- [x] **Step 15**: Define `Merchant` model in `prisma/schema.prisma` with `authUserId` unique constraint.
+- [x] **Step 16**: Define `Customer` model in `prisma/schema.prisma` with cascade relation to `Merchant`.
 - [ ] **Step 17**: Define `Invoice` and `InvoiceItem` models with `Decimal(20, 7)` precision and index on `(merchantId, status)`.
 - [ ] **Step 18**: Define `Payment` model with composite unique constraint `@@unique([txHash, operationIndex])`.
 - [ ] **Step 19**: Define `ListenerState` model for stream cursor tracking and `WebhookEvent` model for notifications.

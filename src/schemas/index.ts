@@ -46,3 +46,11 @@ export const MerchantProfileSchema = z.object({
   walletAddress: StellarAddressSchema,
 });
 
+export const CreateCustomerSchema = z.object({
+  name: z.string().min(1, 'Customer name is required').max(100),
+  email: z.string().email('Invalid customer email address'),
+  phone: z.string().max(30).optional(),
+});
+
+export const UpdateCustomerSchema = CreateCustomerSchema.partial();
+
