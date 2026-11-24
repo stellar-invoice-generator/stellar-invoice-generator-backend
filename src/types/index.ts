@@ -128,3 +128,21 @@ export interface PaymentDTO {
   createdAt: Date;
 }
 
+export interface ListenerStateDTO {
+  streamName: string;
+  lastCursor: string;
+  updatedAt: Date;
+}
+
+export interface WebhookEventDTO {
+  id: string;
+  merchantId: string;
+  eventType: string;
+  payload: Record<string, unknown>;
+  deliveryStatus: WebhookStatus;
+  attempts: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+

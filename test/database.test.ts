@@ -294,3 +294,81 @@ describe('Step 18: Payment Model & Composite Idempotency Constraint', () => {
     ).toThrow(/Invalid Stellar public address/);
   });
 });
+
+describe('Step 19: ListenerState & WebhookEvent Models', () => {
+  it('should verify schema.prisma defines ListenerState for stream cursor tracking', () => {
+    const schemaPath = path.resolve(__dirname, '../prisma/schema.prisma');
+    const schemaContent = fs.readFileSync(schemaPath, 'utf8');
+
+    // Model declaration
+    expect(schemaContent).toContain('model ListenerState {');
+    // Primary key on streamName
+    expect(schemaContent).toMatch(/streamName\s+String\s+@id\s+@map\("stream_name"\)/);
+    // Cursor string tracking
+    expect(schemaContent).toMatch(/lastCursor\s+String\s+@map\("last_cursor"\)/);
+    // Auto-updating timestamp
+    expect(schemaContent).toMatch(/updatedAt\s+DateTime\s+@updatedAt\s+@map\("updated_at"\)/);
+    // Table mapping
+    expect(schemaContent).toContain('@@map("listener_states")');
+  });
+
+  it('should verify schema.prisma defines WebhookEvent with multi-tenant and status indexes', () => {
+    const schemaPath = path.resolve(__dirname, '../prisma/schema.prisma');
+    const schemaContent = fs.readFileSync(schemaPath, 'utf8');
+
+    // Model declaration
+    expect(schemaContent).toContain('model WebhookEvent {');
+    // Foreign key and fields
+    expect(schemaContent).toMatch(/merchantId\s+String\s+@map\("merchant_id"\)/);
+    expect(schemaContent).toMatch(/eventType\s+String\s+@map\("event_type"\)/);
+    expect(schemaContent).toMatch(/deliveryStatus\s+WebhookStatus\s+@default\(PENDING\)\s+@map\("delivery_status"\)/);
+    expect(schemaContent).toMatch(/attempts\s+Int\s+@default\(0\)/);
+    // Cascade delete to Merchant
+    expect(schemaContent).toMatch(/@relation\(fields:\s*\[merchantId\],\s*references:\s*\[id\],\s*onDelete:\s*Cascade\)/);
+    // Query indexes for polling and filtering
+    expect(schemaContent).toContain('@@index([merchantId])');
+    expect(schemaContent).toContain('@@index([deliveryStatus])');
+    // Table mapping
+    expect(schemaContent).toContain('@@map("webhook_events")');
+  });
+});
+
+describe('Step 20: Initial Prisma Migration & DDL Integrity', () => {
+  it('should verify migration.sql exists and creates all required relational tables and constraints', () => {
+    const migrationsDir = path.resolve(__dirname, '../prisma/migrations');
+    const migrationFolders = fs
+      .readdirSync(migrationsDir)
+      .filter((file) => fs.statSync(path.join(migrationsDir, file)).isDirectory());
+
+    expect(migrationFolders.length).toBeGreaterThanOrEqual(1);
+
+    const initFolder = migrationFolders.find((folder) => folder.endsWith('_init'));
+    expect(initFolder).toBeDefined();
+
+    const sqlPath = path.join(migrationsDir, initFolder!, 'migration.sql');
+    expect(fs.existsSync(sqlPath)).toBe(true);
+
+    const sqlContent = fs.readFileSync(sqlPath, 'utf8');
+
+    // Domain Enums
+    expect(sqlContent).toContain('CREATE TYPE "InvoiceStatus"');
+    expect(sqlContent).toContain('CREATE TYPE "PaymentMatchResult"');
+    expect(sqlContent).toContain('CREATE TYPE "WebhookStatus"');
+
+    // Relational Tables
+    expect(sqlContent).toContain('CREATE TABLE "merchants"');
+    expect(sqlContent).toContain('CREATE TABLE "customers"');
+    expect(sqlContent).toContain('CREATE TABLE "invoices"');
+    expect(sqlContent).toContain('CREATE TABLE "invoice_items"');
+    expect(sqlContent).toContain('CREATE TABLE "payments"');
+    expect(sqlContent).toContain('CREATE TABLE "listener_states"');
+    expect(sqlContent).toContain('CREATE TABLE "webhook_events"');
+
+    // Critical Constraints & Indexes
+    expect(sqlContent).toContain('CREATE UNIQUE INDEX "payments_tx_hash_operation_index_key"');
+    expect(sqlContent).toContain('CREATE INDEX "invoices_merchant_id_status_idx"');
+    expect(sqlContent).toContain('CREATE UNIQUE INDEX "invoices_reference_key"');
+    expect(sqlContent).toContain('ALTER TABLE "payments" ADD CONSTRAINT');
+    expect(sqlContent).toContain('ALTER TABLE "invoices" ADD CONSTRAINT');
+  });
+});

@@ -156,6 +156,8 @@ model WebhookEvent {
 
   merchant       Merchant      @relation(fields: [merchantId], references: [id], onDelete: Cascade)
 
+  @@index([merchantId])
+  @@index([deliveryStatus])
   @@map("webhook_events")
 }
 
