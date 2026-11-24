@@ -92,3 +92,39 @@ export interface CreateCustomerDTO {
   email: string;
   phone?: string;
 }
+
+export interface InvoiceDTO {
+  id: string;
+  merchantId: string;
+  customerId?: string | null;
+  reference: string;
+  amount: string;
+  amountPaid: string;
+  assetCode: string;
+  assetIssuer?: string | null;
+  description: string;
+  dueDate: Date;
+  status: InvoiceStatus;
+  paymentLink?: string | null;
+  createdAt: Date;
+  paidDate?: Date | null;
+  updatedAt: Date;
+  items?: InvoiceItemDTO[];
+}
+
+export interface PaymentDTO {
+  id: string;
+  invoiceId?: string | null;
+  txHash: string;
+  operationIndex: number;
+  senderAddress: string;
+  amount: string;
+  assetCode: string;
+  assetIssuer?: string | null;
+  memoReceived?: string | null;
+  matchResult: PaymentMatchResult;
+  ledger: string;
+  timestamp: Date;
+  createdAt: Date;
+}
+

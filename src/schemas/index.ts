@@ -21,6 +21,12 @@ export const StellarAddressSchema = z
   .string()
   .regex(/^G[A-Z2-7]{55}$/, 'Invalid Stellar public address format (must start with G and be 56 characters)');
 
+export const InvoiceItemSchema = z.object({
+  description: z.string().min(1).max(255),
+  quantity: z.number().int().positive(),
+  unitPrice: z.string().regex(/^\d+(\.\d{1,7})?$/, 'Unit price must be a valid decimal string with up to 7 decimal places'),
+});
+
 export const CreateInvoiceSchema = z.object({
   customerId: z.string().uuid().optional(),
   amount: z.string().regex(/^\d+(\.\d{1,7})?$/, 'Amount must be a valid decimal string with up to 7 decimal places'),
@@ -28,15 +34,7 @@ export const CreateInvoiceSchema = z.object({
   assetIssuer: StellarAddressSchema.optional().nullable(),
   description: z.string().min(1).max(255),
   dueDate: z.string().datetime(),
-  items: z
-    .array(
-      z.object({
-        description: z.string().min(1).max(255),
-        quantity: z.number().int().positive(),
-        unitPrice: z.string().regex(/^\d+(\.\d{1,7})?$/),
-      }),
-    )
-    .optional(),
+  items: z.array(InvoiceItemSchema).optional(),
 });
 
 export const MerchantProfileSchema = z.object({
@@ -53,4 +51,16 @@ export const CreateCustomerSchema = z.object({
 });
 
 export const UpdateCustomerSchema = CreateCustomerSchema.partial();
+
+export const PaymentRecordSchema = z.object({
+  txHash: z.string().regex(/^[0-9a-fA-F]{64}$/, 'Stellar transaction hash must be 64 hexadecimal characters'),
+  operationIndex: z.number().int().nonnegative('Operation index must be a non-negative integer'),
+  senderAddress: StellarAddressSchema,
+  amount: z.string().regex(/^\d+(\.\d{1,7})?$/, 'Amount must be a valid decimal string with up to 7 decimal places'),
+  assetCode: z.string().min(1).max(12),
+  assetIssuer: StellarAddressSchema.optional().nullable(),
+  memoReceived: z.string().max(28).optional().nullable(),
+  ledger: z.union([z.bigint(), z.number().int().positive(), z.string().regex(/^\d+$/)]),
+  timestamp: z.string().datetime(),
+});
 

@@ -26,8 +26,8 @@ For the complete granular breakdown, see [100_step_implementation_plan.md](file:
 - [x] **Step 14**: Define `InvoiceStatus`, `PaymentMatchResult`, and `WebhookStatus` enums in `prisma/schema.prisma`.
 - [x] **Step 15**: Define `Merchant` model in `prisma/schema.prisma` with `authUserId` unique constraint.
 - [x] **Step 16**: Define `Customer` model in `prisma/schema.prisma` with cascade relation to `Merchant`.
-- [ ] **Step 17**: Define `Invoice` and `InvoiceItem` models with `Decimal(20, 7)` precision and index on `(merchantId, status)`.
-- [ ] **Step 18**: Define `Payment` model with composite unique constraint `@@unique([txHash, operationIndex])`.
+- [x] **Step 17**: Define `Invoice` and `InvoiceItem` models with `Decimal(20, 7)` precision and index on `(merchantId, status)`.
+- [x] **Step 18**: Define `Payment` model with composite unique constraint `@@unique([txHash, operationIndex])`.
 - [ ] **Step 19**: Define `ListenerState` model for stream cursor tracking and `WebhookEvent` model for notifications.
 - [ ] **Step 20**: Execute initial Prisma migration `npx prisma migrate dev --name init`.
 - [ ] **Step 21**: Implement `PrismaClient` singleton with graceful disconnection hooks in `src/config/prisma.ts`.

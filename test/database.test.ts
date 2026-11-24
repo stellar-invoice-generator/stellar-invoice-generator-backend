@@ -11,6 +11,9 @@ import {
   MerchantProfileSchema,
   CreateCustomerSchema,
   UpdateCustomerSchema,
+  CreateInvoiceSchema,
+  InvoiceItemSchema,
+  PaymentRecordSchema,
 } from '../src/schemas/index.js';
 
 describe('Step 13: Local PostgreSQL Container & Connectivity', () => {
@@ -142,5 +145,152 @@ describe('Step 16: Customer Model & Cascade Relation to Merchant', () => {
     expect(() =>
       CreateCustomerSchema.parse({ name: 'Bob', email: 'not-an-email' }),
     ).toThrow(/Invalid customer email address/);
+  });
+});
+
+describe('Step 17: Invoice and InvoiceItem Models & Precision Constraints', () => {
+  it('should verify schema.prisma defines Invoice with Decimal(20, 7) precision and compound index', () => {
+    const schemaPath = path.resolve(__dirname, '../prisma/schema.prisma');
+    const schemaContent = fs.readFileSync(schemaPath, 'utf8');
+
+    // Model declaration
+    expect(schemaContent).toContain('model Invoice {');
+    // Decimal(20, 7) precision on amount and amount_paid
+    expect(schemaContent).toMatch(/amount\s+Decimal\s+@db\.Decimal\(20,\s*7\)/);
+    expect(schemaContent).toMatch(/amountPaid\s+Decimal\s+@default\(0\)\s+@map\("amount_paid"\)\s+@db\.Decimal\(20,\s*7\)/);
+    // Reference unique constraint
+    expect(schemaContent).toMatch(/reference\s+String\s+@unique/);
+    // Compound index on (merchantId, status)
+    expect(schemaContent).toContain('@@index([merchantId, status])');
+    // Index on reference
+    expect(schemaContent).toContain('@@index([reference])');
+    // Relations to Merchant and Customer
+    expect(schemaContent).toMatch(/@relation\(fields:\s*\[merchantId\],\s*references:\s*\[id\],\s*onDelete:\s*Cascade\)/);
+    expect(schemaContent).toMatch(/@relation\(fields:\s*\[customerId\],\s*references:\s*\[id\],\s*onDelete:\s*SetNull\)/);
+    // Table mapping
+    expect(schemaContent).toContain('@@map("invoices")');
+  });
+
+  it('should verify schema.prisma defines InvoiceItem with Decimal(20, 7) and foreign key index', () => {
+    const schemaPath = path.resolve(__dirname, '../prisma/schema.prisma');
+    const schemaContent = fs.readFileSync(schemaPath, 'utf8');
+
+    // Model declaration
+    expect(schemaContent).toContain('model InvoiceItem {');
+    // Decimal(20, 7) precision on unitPrice
+    expect(schemaContent).toMatch(/unitPrice\s+Decimal\s+@map\("unit_price"\)\s+@db\.Decimal\(20,\s*7\)/);
+    // Cascade relation to Invoice
+    expect(schemaContent).toMatch(/@relation\(fields:\s*\[invoiceId\],\s*references:\s*\[id\],\s*onDelete:\s*Cascade\)/);
+    // Index on invoiceId
+    expect(schemaContent).toContain('@@index([invoiceId])');
+    // Table mapping
+    expect(schemaContent).toContain('@@map("invoice_items")');
+  });
+
+  it('should validate CreateInvoiceSchema and InvoiceItemSchema parsing and validation rules', () => {
+    const validInvoice = {
+      amount: '125.5000000',
+      assetCode: 'USDC',
+      assetIssuer: 'GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5',
+      description: 'Consulting services - November 2026',
+      dueDate: new Date(Date.now() + 86400000).toISOString(),
+      items: [
+        {
+          description: 'Architecture review',
+          quantity: 1,
+          unitPrice: '100.0000000',
+        },
+        {
+          description: 'Implementation hours',
+          quantity: 2,
+          unitPrice: '12.7500000',
+        },
+      ],
+    };
+
+    const parsed = CreateInvoiceSchema.parse(validInvoice);
+    expect(parsed.amount).toBe('125.5000000');
+    expect(parsed.assetCode).toBe('USDC');
+    expect(parsed.items?.length).toBe(2);
+
+    // Rejects amounts exceeding 7 decimal places
+    expect(() =>
+      CreateInvoiceSchema.parse({
+        ...validInvoice,
+        amount: '125.12345678', // 8 decimals
+      }),
+    ).toThrow(/up to 7 decimal places/);
+
+    // Rejects negative line item quantity
+    expect(() =>
+      InvoiceItemSchema.parse({
+        description: 'Test',
+        quantity: -1,
+        unitPrice: '10.0000000',
+      }),
+    ).toThrow();
+  });
+});
+
+describe('Step 18: Payment Model & Composite Idempotency Constraint', () => {
+  it('should verify schema.prisma defines Payment with @@unique([txHash, operationIndex])', () => {
+    const schemaPath = path.resolve(__dirname, '../prisma/schema.prisma');
+    const schemaContent = fs.readFileSync(schemaPath, 'utf8');
+
+    // Model declaration
+    expect(schemaContent).toContain('model Payment {');
+    // Field mappings
+    expect(schemaContent).toMatch(/txHash\s+String\s+@map\("tx_hash"\)/);
+    expect(schemaContent).toMatch(/operationIndex\s+Int\s+@default\(0\)\s+@map\("operation_index"\)/);
+    expect(schemaContent).toMatch(/senderAddress\s+String\s+@map\("sender_address"\)/);
+    expect(schemaContent).toMatch(/amount\s+Decimal\s+@db\.Decimal\(20,\s*7\)/);
+    // Composite unique constraint enforcing idempotency
+    expect(schemaContent).toContain('@@unique([txHash, operationIndex])');
+    // Index on invoiceId
+    expect(schemaContent).toContain('@@index([invoiceId])');
+    // Table mapping
+    expect(schemaContent).toContain('@@map("payments")');
+  });
+
+  it('should validate PaymentRecordSchema validates 64-char hex txHash, amounts, and ledger values', () => {
+    const validPayment = {
+      txHash: 'a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2',
+      operationIndex: 0,
+      senderAddress: 'GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5',
+      amount: '50.0000000',
+      assetCode: 'XLM',
+      memoReceived: 'INV-A1B2C3',
+      ledger: '12345678',
+      timestamp: new Date().toISOString(),
+    };
+
+    const parsed = PaymentRecordSchema.parse(validPayment);
+    expect(parsed.txHash).toBe(validPayment.txHash);
+    expect(parsed.operationIndex).toBe(0);
+    expect(parsed.amount).toBe('50.0000000');
+
+    // Rejects non-64 char hex hash
+    expect(() =>
+      PaymentRecordSchema.parse({
+        ...validPayment,
+        txHash: 'invalid-hash-too-short',
+      }),
+    ).toThrow(/64 hexadecimal characters/);
+
+    // Rejects negative operation index
+    expect(() =>
+      PaymentRecordSchema.parse({
+        ...validPayment,
+        operationIndex: -1,
+      }),
+    ).toThrow(/non-negative/);
+
+    // Rejects invalid sender address format
+    expect(() =>
+      PaymentRecordSchema.parse({
+        ...validPayment,
+        senderAddress: 'SBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5', // Secret seed!
+      }),
+    ).toThrow(/Invalid Stellar public address/);
   });
 });

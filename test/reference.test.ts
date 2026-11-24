@@ -49,7 +49,7 @@ describe('Step 11: Collision-Resistant Reference Generator', () => {
     }
   });
 
-  it('should demonstrate high entropy with 0 collisions across 10,000 generated references', () => {
+  it('should demonstrate high entropy with near-zero collisions across 10,000 generated references', () => {
     const total = 10000;
     const generated = new Set<string>();
 
@@ -57,7 +57,9 @@ describe('Step 11: Collision-Resistant Reference Generator', () => {
       generated.add(generateInvoiceReference({ randomLength: 6 }));
     }
 
-    expect(generated.size).toBe(total);
+    // In a 31^6 (~8.87e8) keyspace, 10,000 samples has a ~5.5% statistical birthday collision chance.
+    // Verify high entropy with >= 99.98% uniqueness (at most 2 collisions across 10,000 samples).
+    expect(generated.size).toBeGreaterThanOrEqual(total - 2);
   });
 });
 
