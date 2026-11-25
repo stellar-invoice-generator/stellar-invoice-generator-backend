@@ -34,8 +34,8 @@ For the complete granular breakdown, see [100_step_implementation_plan.md](file:
 - [x] **Step 22**: Create database test helper in `test/setup.ts` to reset test tables between test suites.
 
 ### Stage 3: Stellar Core Utilities & StrKey Validation (Steps 23–30)
-- [ ] **Step 23**: Implement `isValidStellarAddress(address)` in `src/utils/stellarAddress.util.ts` using `@stellar/stellar-sdk` `StrKey`.
-- [ ] **Step 24**: Verify that secret seeds (`S...`) are strictly rejected by `isValidStellarAddress`.
+- [x] **Step 23**: Implement `isValidStellarAddress(address)` in `src/utils/stellarAddress.util.ts` using `@stellar/stellar-sdk` `StrKey`.
+- [x] **Step 24**: Verify that secret seeds (`S...`) are strictly rejected by `isValidStellarAddress`.
 - [ ] **Step 25**: Implement Stellar network passphrase resolver in `src/config/stellar.ts` (Public vs Testnet).
 - [ ] **Step 26**: Register official Testnet USDC issuer in `src/config/stellar.ts`.
 - [ ] **Step 27**: Write unit tests in `test/stellarAddress.test.ts` testing valid and corrupted public keys.

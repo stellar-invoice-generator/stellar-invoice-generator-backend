@@ -16,10 +16,12 @@
  */
 
 import { z } from 'zod';
+import { isValidStellarAddress } from '../utils/stellarAddress.util.js';
 
 export const StellarAddressSchema = z
   .string()
-  .regex(/^G[A-Z2-7]{55}$/, 'Invalid Stellar public address format (must start with G and be 56 characters)');
+  .regex(/^G[A-Z2-7]{55}$/, 'Invalid Stellar public address format (must start with G and be 56 characters)')
+  .refine(isValidStellarAddress, 'Invalid Stellar public address checksum');
 
 export const InvoiceItemSchema = z.object({
   description: z.string().min(1).max(255),
