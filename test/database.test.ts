@@ -15,6 +15,19 @@ import {
   InvoiceItemSchema,
   PaymentRecordSchema,
 } from '../src/schemas/index.js';
+import {
+  prisma,
+  createPrismaClient,
+  connectPrisma,
+  disconnectPrisma,
+  registerPrismaShutdownHooks,
+} from '../src/config/prisma.js';
+import {
+  resetTestDatabase,
+  createTestMerchantData,
+  createTestCustomerData,
+  createTestInvoiceData,
+} from './setup.js';
 
 describe('Step 13: Local PostgreSQL Container & Connectivity', () => {
   it('should verify PostgreSQL socket connection availability on port 5432', async () => {
@@ -370,5 +383,122 @@ describe('Step 20: Initial Prisma Migration & DDL Integrity', () => {
     expect(sqlContent).toContain('CREATE UNIQUE INDEX "invoices_reference_key"');
     expect(sqlContent).toContain('ALTER TABLE "payments" ADD CONSTRAINT');
     expect(sqlContent).toContain('ALTER TABLE "invoices" ADD CONSTRAINT');
+  });
+});
+
+describe('Step 21: PrismaClient Singleton & Lifecycle Hooks', () => {
+  it('should export a valid prisma singleton with all model delegates attached', () => {
+    expect(prisma).toBeDefined();
+    expect(prisma.merchant).toBeDefined();
+    expect(prisma.customer).toBeDefined();
+    expect(prisma.invoice).toBeDefined();
+    expect(prisma.invoiceItem).toBeDefined();
+    expect(prisma.payment).toBeDefined();
+    expect(prisma.listenerState).toBeDefined();
+    expect(prisma.webhookEvent).toBeDefined();
+  });
+
+  it('should create a new client using createPrismaClient factory', () => {
+    const customClient = createPrismaClient();
+    expect(customClient).toBeDefined();
+    expect(typeof customClient.$connect).toBe('function');
+    expect(typeof customClient.$disconnect).toBe('function');
+  });
+
+  it('should expose lifecycle functions connectPrisma, disconnectPrisma, and registerPrismaShutdownHooks', () => {
+    expect(typeof connectPrisma).toBe('function');
+    expect(typeof disconnectPrisma).toBe('function');
+    expect(typeof registerPrismaShutdownHooks).toBe('function');
+
+    // Verify registering shutdown hooks executes without error
+    expect(() => registerPrismaShutdownHooks()).not.toThrow();
+  });
+});
+
+describe('Step 22: Database Test Helper & Table Reset', () => {
+  it('should execute resetTestDatabase in strict reverse foreign-key dependency order inside $transaction', async () => {
+    const mockCalls: string[] = [];
+    const mockClient = {
+      payment: {
+        deleteMany: () => {
+          mockCalls.push('payment');
+          return 'del-payments';
+        },
+      },
+      invoiceItem: {
+        deleteMany: () => {
+          mockCalls.push('invoiceItem');
+          return 'del-invoiceItems';
+        },
+      },
+      invoice: {
+        deleteMany: () => {
+          mockCalls.push('invoice');
+          return 'del-invoices';
+        },
+      },
+      webhookEvent: {
+        deleteMany: () => {
+          mockCalls.push('webhookEvent');
+          return 'del-webhookEvents';
+        },
+      },
+      customer: {
+        deleteMany: () => {
+          mockCalls.push('customer');
+          return 'del-customers';
+        },
+      },
+      merchant: {
+        deleteMany: () => {
+          mockCalls.push('merchant');
+          return 'del-merchants';
+        },
+      },
+      listenerState: {
+        deleteMany: () => {
+          mockCalls.push('listenerState');
+          return 'del-listenerStates';
+        },
+      },
+      $transaction: async (ops: unknown[]) => {
+        mockCalls.push('$transaction');
+        return ops;
+      },
+    } as unknown as typeof prisma;
+
+    await resetTestDatabase(mockClient);
+
+    expect(mockCalls).toEqual([
+      'payment',
+      'invoiceItem',
+      'invoice',
+      'webhookEvent',
+      'customer',
+      'merchant',
+      'listenerState',
+      '$transaction',
+    ]);
+  });
+
+  it('should generate valid test fixtures for merchants, customers, and invoices', () => {
+    const merchantData = createTestMerchantData();
+    const validatedMerchant = MerchantProfileSchema.parse(merchantData);
+    expect(validatedMerchant.email).toBe(merchantData.email);
+    expect(validatedMerchant.walletAddress).toBe(merchantData.walletAddress);
+
+    const customerData = createTestCustomerData('merchant-uuid');
+    const validatedCustomer = CreateCustomerSchema.parse(customerData);
+    expect(validatedCustomer.email).toBe(customerData.email);
+
+    const invoiceData = createTestInvoiceData('merchant-uuid');
+    const validatedInvoice = CreateInvoiceSchema.parse({
+      amount: invoiceData.amount,
+      assetCode: invoiceData.assetCode,
+      description: invoiceData.description,
+      dueDate: invoiceData.dueDate.toISOString(),
+    });
+    expect(validatedInvoice.amount).toBe('100.0000000');
+    expect(validatedInvoice.assetCode).toBe('XLM');
   });
 });

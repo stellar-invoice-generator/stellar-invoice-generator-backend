@@ -30,8 +30,8 @@ For the complete granular breakdown, see [100_step_implementation_plan.md](file:
 - [x] **Step 18**: Define `Payment` model with composite unique constraint `@@unique([txHash, operationIndex])`.
 - [x] **Step 19**: Define `ListenerState` model for stream cursor tracking and `WebhookEvent` model for notifications.
 - [x] **Step 20**: Execute initial Prisma migration `npx prisma migrate dev --name init`.
-- [ ] **Step 21**: Implement `PrismaClient` singleton with graceful disconnection hooks in `src/config/prisma.ts`.
-- [ ] **Step 22**: Create database test helper in `test/setup.ts` to reset test tables between test suites.
+- [x] **Step 21**: Implement `PrismaClient` singleton with graceful disconnection hooks in `src/config/prisma.ts`.
+- [x] **Step 22**: Create database test helper in `test/setup.ts` to reset test tables between test suites.
 
 ### Stage 3: Stellar Core Utilities & StrKey Validation (Steps 23–30)
 - [ ] **Step 23**: Implement `isValidStellarAddress(address)` in `src/utils/stellarAddress.util.ts` using `@stellar/stellar-sdk` `StrKey`.
