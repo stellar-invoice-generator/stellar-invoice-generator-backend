@@ -38,8 +38,8 @@ For the complete granular breakdown, see [100_step_implementation_plan.md](file:
 - [x] **Step 24**: Verify that secret seeds (`S...`) are strictly rejected by `isValidStellarAddress`.
 - [x] **Step 25**: Implement Stellar network passphrase resolver in `src/config/stellar.ts` (Public vs Testnet).
 - [x] **Step 26**: Register official Testnet USDC issuer in `src/config/stellar.ts`.
-- [ ] **Step 27**: Write unit tests in `test/stellarAddress.test.ts` testing valid and corrupted public keys.
-- [ ] **Step 28**: Implement SEP-7 URI builder helper in `src/stellar/paymentUri/paymentUri.service.ts` for native XLM.
+- [x] **Step 27**: Write unit tests in `test/stellarAddress.test.ts` testing valid and corrupted public keys.
+- [x] **Step 28**: Implement SEP-7 URI builder helper in `src/stellar/paymentUri/paymentUri.service.ts` for native XLM.
 - [ ] **Step 29**: Extend SEP-7 URI builder to support non-native assets (`asset_code` and `asset_issuer` query params).
 - [ ] **Step 30**: Write unit tests verifying that SEP-7 links match the standard `web+stellar:pay?destination=...&amount=...&memo=...`.
 

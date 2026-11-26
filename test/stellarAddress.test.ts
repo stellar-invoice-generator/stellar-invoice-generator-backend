@@ -225,3 +225,69 @@ describe('Step 26: Official USDC Issuer & Asset Verification Registry', () => {
     expect(stellarConfig.verifiedIssuers.USDC).toBe(TESTNET_USDC_ISSUER);
   });
 });
+
+describe('Step 27: Comprehensive Valid and Corrupted Public Key Edge Cases', () => {
+  it('should accept valid ed25519 public keys across both public and test networks', () => {
+    // Official testnet USDC
+    expect(isValidStellarAddress('GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5')).toBe(true);
+    // Official public USDC
+    expect(isValidStellarAddress('GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN')).toBe(true);
+
+    // Dynamic key generation
+    for (let i = 0; i < 5; i++) {
+      const generated = Keypair.random().publicKey();
+      expect(isValidStellarAddress(generated)).toBe(true);
+    }
+  });
+
+  it('should detect and reject single-character mutations at start, middle, and end positions', () => {
+    const valid = 'GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5';
+
+    // Mutate prefix (position 0)
+    const badPrefix = 'A' + valid.slice(1);
+    expect(isValidStellarAddress(badPrefix)).toBe(false);
+
+    // Mutate middle character (position 25)
+    const midChar = valid[25] === 'A' ? 'B' : 'A';
+    const badMiddle = valid.slice(0, 25) + midChar + valid.slice(26);
+    expect(isValidStellarAddress(badMiddle)).toBe(false);
+
+    // Mutate checksum suffix (position 55)
+    const endChar = valid[55] === '5' ? '4' : '5';
+    const badEnd = valid.slice(0, 55) + endChar;
+    expect(isValidStellarAddress(badEnd)).toBe(false);
+  });
+
+  it('should detect and reject character transpositions (swapped adjacent characters)', () => {
+    const valid = 'GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5';
+
+    // Swap characters at index 10 and 11
+    const chars = valid.split('');
+    const temp = chars[10];
+    chars[10] = chars[11];
+    chars[11] = temp;
+    const transposed = chars.join('');
+
+    // Transposition must fail CRC16 checksum
+    expect(isValidStellarAddress(transposed)).toBe(false);
+  });
+
+  it('should reject whitespace-padded or newline-contaminated addresses', () => {
+    const valid = 'GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5';
+
+    expect(isValidStellarAddress(` ${valid}`)).toBe(false);
+    expect(isValidStellarAddress(`${valid} `)).toBe(false);
+    expect(isValidStellarAddress(`${valid}\n`)).toBe(false);
+    expect(isValidStellarAddress(`\t${valid}`)).toBe(false);
+  });
+
+  it('should reject raw hex or buffer strings that are not StrKey encoded', () => {
+    // 64-character hex key (raw 32-byte ed25519 public key)
+    const rawHexKey = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
+    expect(isValidStellarAddress(rawHexKey)).toBe(false);
+
+    // Ethereum-style 0x address
+    const ethAddress = '0x71C7656EC7ab88b098defB751B7401B5f6d8976F';
+    expect(isValidStellarAddress(ethAddress)).toBe(false);
+  });
+});
