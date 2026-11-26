@@ -1,11 +1,20 @@
 import { describe, it, expect } from 'vitest';
-import { Keypair, StrKey } from '@stellar/stellar-sdk';
+import { Keypair, StrKey, Networks } from '@stellar/stellar-sdk';
 import {
   isValidStellarAddress,
   isSecretSeed,
   assertValidStellarAddress,
 } from '../src/utils/stellarAddress.util.js';
 import { StellarAddressSchema } from '../src/schemas/index.js';
+import {
+  getNetworkPassphrase,
+  TESTNET_USDC_ISSUER,
+  PUBLIC_USDC_ISSUER,
+  OFFICIAL_USDC_ISSUERS,
+  getOfficialUsdcIssuer,
+  isOfficialUsdcIssuer,
+  stellarConfig,
+} from '../src/config/stellar.js';
 
 describe('Step 23: StrKey Public Key Validation (isValidStellarAddress)', () => {
   const knownTestnetUsdcIssuer = 'GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5';
@@ -133,5 +142,86 @@ describe('Step 24: Secret Seed Rejection & Non-Custodial Safety', () => {
     expect(() => StellarAddressSchema.parse(corruptedKey)).toThrow(
       /Invalid Stellar public address checksum/,
     );
+  });
+});
+
+describe('Step 25: Stellar Network Passphrase Resolver', () => {
+  it('should return official TESTNET passphrase for "TESTNET" (case-insensitive)', () => {
+    expect(getNetworkPassphrase('TESTNET')).toBe(Networks.TESTNET);
+    expect(getNetworkPassphrase('testnet')).toBe(Networks.TESTNET);
+    expect(getNetworkPassphrase('Testnet')).toBe(Networks.TESTNET);
+    expect(getNetworkPassphrase('TESTNET')).toBe('Test SDF Network ; September 2015');
+  });
+
+  it('should return official PUBLIC passphrase for "PUBLIC" (case-insensitive)', () => {
+    expect(getNetworkPassphrase('PUBLIC')).toBe(Networks.PUBLIC);
+    expect(getNetworkPassphrase('public')).toBe(Networks.PUBLIC);
+    expect(getNetworkPassphrase('Public')).toBe(Networks.PUBLIC);
+    expect(getNetworkPassphrase('PUBLIC')).toBe('Public Global Stellar Network ; September 2015');
+  });
+
+  it('should default to envConfig.STELLAR_NETWORK when called without arguments', () => {
+    const defaultPassphrase = getNetworkPassphrase();
+    expect(defaultPassphrase).toBe(Networks.TESTNET);
+  });
+
+  it('should throw descriptive error when passed an unsupported network', () => {
+    expect(() => getNetworkPassphrase('REGTEST')).toThrow(
+      /Unsupported Stellar network: "REGTEST"/,
+    );
+    expect(() => getNetworkPassphrase('MAINNET')).toThrow(
+      /Unsupported Stellar network: "MAINNET"/,
+    );
+  });
+});
+
+describe('Step 26: Official USDC Issuer & Asset Verification Registry', () => {
+  it('should register valid official USDC issuers for TESTNET and PUBLIC', () => {
+    expect(TESTNET_USDC_ISSUER).toBe('GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5');
+    expect(PUBLIC_USDC_ISSUER).toBe('GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN');
+
+    expect(isValidStellarAddress(TESTNET_USDC_ISSUER)).toBe(true);
+    expect(isValidStellarAddress(PUBLIC_USDC_ISSUER)).toBe(true);
+
+    expect(OFFICIAL_USDC_ISSUERS.TESTNET).toBe(TESTNET_USDC_ISSUER);
+    expect(OFFICIAL_USDC_ISSUERS.PUBLIC).toBe(PUBLIC_USDC_ISSUER);
+  });
+
+  it('should resolve official USDC issuer via getOfficialUsdcIssuer', () => {
+    expect(getOfficialUsdcIssuer('TESTNET')).toBe(TESTNET_USDC_ISSUER);
+    expect(getOfficialUsdcIssuer('PUBLIC')).toBe(PUBLIC_USDC_ISSUER);
+    expect(getOfficialUsdcIssuer()).toBe(TESTNET_USDC_ISSUER);
+
+    expect(() => getOfficialUsdcIssuer('UNKNOWN')).toThrow(
+      /Unsupported Stellar network: "UNKNOWN"/,
+    );
+  });
+
+  it('should verify official USDC issuer and prevent spoofed token assets', () => {
+    // Valid official Circle USDC on Testnet
+    expect(isOfficialUsdcIssuer('USDC', TESTNET_USDC_ISSUER, 'TESTNET')).toBe(true);
+
+    // Valid official Circle USDC on Public
+    expect(isOfficialUsdcIssuer('USDC', PUBLIC_USDC_ISSUER, 'PUBLIC')).toBe(true);
+
+    // Cross-network mismatch rejected
+    expect(isOfficialUsdcIssuer('USDC', TESTNET_USDC_ISSUER, 'PUBLIC')).toBe(false);
+
+    // Spoofed issuer address with USDC symbol rejected
+    const spoofedIssuer = Keypair.random().publicKey();
+    expect(isOfficialUsdcIssuer('USDC', spoofedIssuer, 'TESTNET')).toBe(false);
+
+    // Native XLM or other codes rejected
+    expect(isOfficialUsdcIssuer('XLM', null, 'TESTNET')).toBe(false);
+    expect(isOfficialUsdcIssuer('EURC', TESTNET_USDC_ISSUER, 'TESTNET')).toBe(false);
+  });
+
+  it('should provide dynamic getters on stellarConfig singleton matching active environment', () => {
+    expect(stellarConfig.network).toBe('TESTNET');
+    expect(stellarConfig.networkPassphrase).toBe(Networks.TESTNET);
+    expect(stellarConfig.horizonUrl).toBe('https://horizon-testnet.stellar.org');
+    expect(stellarConfig.chainReaderDriver).toBe('horizon');
+    expect(isValidStellarAddress(stellarConfig.platformWalletAddress)).toBe(true);
+    expect(stellarConfig.verifiedIssuers.USDC).toBe(TESTNET_USDC_ISSUER);
   });
 });
