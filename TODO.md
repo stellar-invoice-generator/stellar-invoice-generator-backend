@@ -44,8 +44,8 @@ For the complete granular breakdown, see [100_step_implementation_plan.md](file:
 - [x] **Step 30**: Write unit tests verifying that SEP-7 links match the standard `web+stellar:pay?destination=...&amount=...&memo=...`.
 
 ### Stage 4: Authentication & Tenant Middleware (Steps 31–40)
-- [ ] **Step 31**: Define `IAuthProvider` interface in `src/modules/auth/auth.interface.ts`.
-- [ ] **Step 32**: Implement `ApiKeyAuthProvider` in `src/modules/auth/auth.service.ts` checking `DEV_API_KEY` or merchant API keys.
+- [x] **Step 31**: Define `IAuthProvider` interface in `src/modules/auth/auth.interface.ts`.
+- [x] **Step 32**: Implement `ApiKeyAuthProvider` in `src/modules/auth/auth.service.ts` checking `DEV_API_KEY` or merchant API keys.
 - [ ] **Step 33**: Implement `SupabaseAuthProvider` in `src/modules/auth/auth.service.ts` for JWT verification.
 - [ ] **Step 34**: Implement auth provider factory in `src/modules/auth/auth.service.ts` switching based on `AUTH_MODE`.
 - [ ] **Step 35**: Implement `authMiddleware` in `src/middleware/auth.middleware.ts` extracting Bearer token or `X-API-Key`.
