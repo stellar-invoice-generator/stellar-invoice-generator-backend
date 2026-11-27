@@ -5,7 +5,8 @@
  * Purpose:
  *   [Step 28] Builds standardized, wallet-compatible SEP-7 payment URIs for native XLM
  *   (supported by Freighter, LOBSTR, xBull, and Stellar ecosystem wallets).
- *   [Step 29] Supports non-native assets (`asset_code` and `asset_issuer`).
+ *   [Step 29] Supports non-native assets (`asset_code` and `asset_issuer`), with strict
+ *   validation of asset codes (1-12 alphanumeric characters) and issuer public keys.
  *   Encodes destination address, exact 7-decimal amount, and 28-byte text memo.
  * 
  * Inputs:
@@ -23,6 +24,7 @@
 import { assertValidStellarAddress } from '../../utils/stellarAddress.util.js';
 import { formatStellarAmount, toDecimal } from '../../utils/amount.util.js';
 import { STELLAR_MAX_MEMO_BYTES } from '../../utils/reference.util.js';
+import { getOfficialUsdcIssuer } from '../../config/stellar.js';
 
 export interface BuildPaymentUriParams {
   destination: string;
@@ -71,6 +73,49 @@ export function buildNativePaymentUri(params: {
 }
 
 /**
+ * Step 29: Builds a SEP-7 compliant payment URI for non-native assets (e.g. USDC, EURC).
+ * Enforces that asset_code is 1-12 alphanumeric characters and asset_issuer is a valid G... address.
+ * 
+ * @param params Destination, amount, assetCode, assetIssuer, and optional memo/msg
+ * @returns Fully formatted SEP-7 URI string with asset_code and asset_issuer query params
+ */
+export function buildAssetPaymentUri(params: {
+  destination: string;
+  amount: string | number;
+  assetCode: string;
+  assetIssuer: string;
+  memo?: string;
+  memoType?: 'MEMO_TEXT' | 'MEMO_ID' | 'MEMO_HASH' | 'MEMO_RETURN';
+  msg?: string;
+  networkPassphrase?: string;
+}): string {
+  return buildPaymentUri(params);
+}
+
+/**
+ * Step 29: Helper to build an official USDC payment URI for the active or requested network.
+ * Automatically resolves the official Circle USDC issuer address.
+ * 
+ * @param params Destination, amount, memo, msg, and optional network
+ * @returns Formatted SEP-7 URI for official USDC payment
+ */
+export function buildUsdcPaymentUri(params: {
+  destination: string;
+  amount: string | number;
+  memo?: string;
+  msg?: string;
+  network?: string;
+  networkPassphrase?: string;
+}): string {
+  const issuer = getOfficialUsdcIssuer(params.network);
+  return buildPaymentUri({
+    ...params,
+    assetCode: 'USDC',
+    assetIssuer: issuer,
+  });
+}
+
+/**
  * Builds a standardized SEP-7 payment URI with rigorous validation.
  * 
  * Rules enforced:
@@ -78,6 +123,7 @@ export function buildNativePaymentUri(params: {
  * 2. amount must be strictly positive and formatted to at most 7 decimal places.
  * 3. memo must not exceed 28 bytes UTF-8 when memoType is MEMO_TEXT.
  * 4. asset_code and asset_issuer are omitted for native XLM.
+ * 5. For non-native assets, asset_code must be 1-12 alphanumeric chars and asset_issuer must be valid G... key.
  * 
  * @param params Payment URI parameters
  * @returns Formatted `web+stellar:pay?...` URI string
@@ -104,13 +150,19 @@ export function buildPaymentUri(params: BuildPaymentUriParams): string {
   }
   const formattedAmount = formatStellarAmount(decAmount);
 
-  // 3. Validate memo length (UTF-8 byte length strictly <= 28 for MEMO_TEXT)
+  // 3. Validate memo length and format
   if (memo !== undefined && memo !== '') {
-    const memoBytes = Buffer.byteLength(memo, 'utf8');
-    if (memoBytes > STELLAR_MAX_MEMO_BYTES) {
-      throw new Error(
-        `Invoice reference memo exceeds Stellar ${STELLAR_MAX_MEMO_BYTES}-byte text memo limit: "${memo}" is ${memoBytes} bytes.`,
-      );
+    if (memoType === 'MEMO_TEXT') {
+      const memoBytes = Buffer.byteLength(memo, 'utf8');
+      if (memoBytes > STELLAR_MAX_MEMO_BYTES) {
+        throw new Error(
+          `Invoice reference memo exceeds Stellar ${STELLAR_MAX_MEMO_BYTES}-byte text memo limit: "${memo}" is ${memoBytes} bytes.`,
+        );
+      }
+    } else if (memoType === 'MEMO_ID') {
+      if (!/^\d+$/.test(memo)) {
+        throw new Error(`Invalid MEMO_ID: "${memo}". MEMO_ID must be a 64-bit unsigned integer string.`);
+      }
     }
   }
 
@@ -120,14 +172,28 @@ export function buildPaymentUri(params: BuildPaymentUriParams): string {
   queryParts.push(`destination=${encodeURIComponent(destination)}`);
   queryParts.push(`amount=${encodeURIComponent(formattedAmount)}`);
 
-  // Non-native assets include asset_code and asset_issuer (Step 29 support)
+  // Step 29: Non-native asset encoding and validation
+  if (assetCode !== undefined && assetCode !== null && assetCode.trim() === '') {
+    throw new Error('Invalid Stellar asset code: assetCode cannot be empty.');
+  }
+
   const isNative = !assetCode || assetCode.toUpperCase() === 'XLM' || assetCode.toUpperCase() === 'NATIVE';
   if (!isNative) {
-    queryParts.push(`asset_code=${encodeURIComponent(assetCode!)}`);
-    if (assetIssuer) {
-      assertValidStellarAddress(assetIssuer, 'Asset issuer');
-      queryParts.push(`asset_issuer=${encodeURIComponent(assetIssuer)}`);
+    const trimmedCode = assetCode.trim().toUpperCase();
+    if (!/^[A-Z0-9]{1,12}$/.test(trimmedCode)) {
+      throw new Error(
+        `Invalid Stellar asset code: "${assetCode}". Asset code must be 1-12 alphanumeric characters.`,
+      );
     }
+    if (!assetIssuer) {
+      throw new Error(
+        `Missing required asset issuer for non-native Stellar asset: "${trimmedCode}". Non-native assets require a valid issuer public key.`,
+      );
+    }
+    assertValidStellarAddress(assetIssuer, `Asset issuer for ${trimmedCode}`);
+
+    queryParts.push(`asset_code=${encodeURIComponent(trimmedCode)}`);
+    queryParts.push(`asset_issuer=${encodeURIComponent(assetIssuer)}`);
   }
 
   if (memo !== undefined && memo !== '') {
@@ -172,7 +238,7 @@ export function parsePaymentUri(uri: string): ParsedPaymentUri {
     operation: 'pay',
     destination,
     amount: searchParams.get('amount') ?? undefined,
-    assetCode: rawAssetCode ?? 'XLM',
+    assetCode: rawAssetCode ? rawAssetCode.toUpperCase() : 'XLM',
     assetIssuer: assetIssuer ?? null,
     memo: searchParams.get('memo') ?? undefined,
     memoType: searchParams.get('memo_type') ?? undefined,
